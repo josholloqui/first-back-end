@@ -9,7 +9,8 @@ app.use(express.static('public'));
 
 const { 
     GEOCODE_KEY,
-WEATHERBIT_KEY } = process.env;
+    WEATHERBIT_KEY,
+    HIKINGPROJECT_KEY } = process.env;
 
 async function getLatLong(cityName) {
     const response = await request.get(`https://us1.locationiq.com/v1/search.php?key=${GEOCODE_KEY}&q=${cityName}&format=json`);
@@ -56,6 +57,43 @@ app.get('/weather', async(req, res) => {
         const userLon = req.query.longitude;
 
         const mungedData = await getWeather(userLat, userLon);
+
+        res.json(mungedData);
+    } catch (e) {
+        res.status(500).json({ error: e.message })
+    }
+})
+
+async function getHikes(lat, lon) {
+    const response = await request.get(`https://www.hikingproject.com/data/get-trails?lat=${lat}&lon=${lon}&maxDistance=200&key=${HIKINGPROJECT_KEY}`)
+    
+    const data = response.body.trails;
+
+    const forecastArray = data.map((trail) => {
+        const conditionDateTime = trail.conditionDate.split(' ');
+        return {
+            name: trail.name,
+            location: trail.location,
+            length: trail.length,
+            stars: trail.stars,
+            star_votes: trail.starVotes,
+            summary: trail.summary,
+            trail_url: trail.url,
+            conditions: trail.conditionDetails,
+            condition_date: conditionDateTime[0],
+            condition_time: conditionDateTime[1]
+        };
+    });
+
+    return forecastArray;
+}
+
+app.get('/trails', async(req, res) => {
+    try {
+        const userLat = req.query.latitude;
+        const userLon = req.query.longitude;
+
+        const mungedData = await getHikes(userLat, userLon);
 
         res.json(mungedData);
     } catch (e) {
